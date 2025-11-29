@@ -7,6 +7,7 @@ import {
   PluginSettingTab,
   Setting,
   TAbstractFile,
+  normalizePath,
 } from 'obsidian';
 
 interface FileLog {
@@ -244,7 +245,9 @@ ${summary}`;
 
   private async getSummaryFileExistingContent() {
     try {
-      return await this.app.vault.adapter.read(this.settings.summaryFileName);
+      return await this.app.vault.adapter.read(
+        normalizePath(this.settings.summaryFileName)
+      );
     } catch (e) {
       console.error('Error getting file: ', e);
       new Notice('Failed to find existing Summary File, creating a new one...');
@@ -255,7 +258,7 @@ ${summary}`;
   private async updateSummaryFile(contentToAppend: string) {
     const existingContent = await this.getSummaryFileExistingContent();
     await this.app.vault.adapter.write(
-      this.settings.summaryFileName,
+      normalizePath(this.settings.summaryFileName),
       existingContent + contentToAppend
     );
   }
