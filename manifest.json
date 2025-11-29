@@ -1,0 +1,10 @@
+{
+  "id": "writing-log",
+  "name": "Writing Log",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "A plugin to log writing sessions and track word count changes.",
+  "author": "Caleb Slack",
+  "authorUrl": "",
+  "is'desktopOnly": true
+}
