@@ -17,6 +17,7 @@ interface FileLog {
 }
 
 interface WritingLogPluginSettings {
+  startTime: Date;
   isSessionActive: boolean;
   trackedFiles: Record<string, string>;
   sessionLog: Record<string, FileLog>;
@@ -24,6 +25,7 @@ interface WritingLogPluginSettings {
 }
 
 export const DEFAULT_SETTINGS: WritingLogPluginSettings = {
+  startTime: new Date(),
   isSessionActive: false,
   trackedFiles: {},
   sessionLog: {},
@@ -115,15 +117,18 @@ export default class WritingLogPlugin extends Plugin {
   }
 
   private async handleStopCurrentSession(statusBarItemEl: HTMLElement) {
+    if (!this.settings.isSessionActive) {
+      return new Notice("Can't stop a session that hasn't been started...");
+    }
     this.settings.isSessionActive = false;
     const summary = generateSessionSummary(this.settings);
 
     const summaryFilePath = this.settings.summaryFileName;
-    const now = new Date();
-    const timestamp = now.toLocaleString();
     const contentToAppend = `
 
-## Session Summary - ${timestamp}
+## Session Summary - ${this.settings.startTime.toLocaleString()}
+
+${getSummaryTimeString(this.settings)}
 
 ${summary}`;
 
@@ -140,17 +145,15 @@ ${summary}`;
   private async handleViewCurrentSessionSummary() {
     const summary = generateSessionSummary(this.settings);
 
-    const summaryFilePath = this.settings.summaryFileName;
-    const now = new Date();
-    const timestamp = now.toLocaleString();
-    const contentToAppend = `
+    const currentSummary = `
 
-## Current Session Summary - ${timestamp}
+## Current Session Summary - ${this.settings.startTime.toLocaleString()}
+
+${getSummaryTimeString(this.settings)}
 
 ${summary}`;
 
-    await this.updateSummaryFile(contentToAppend);
-    return new Notice(`Current session summary written to ${summaryFilePath}`);
+    return new Notice(currentSummary);
   }
 
   private async handleStartSessionCommand(statusBarItemEl: HTMLElement) {
@@ -160,6 +163,7 @@ ${summary}`;
       );
     }
     this.settings.isSessionActive = true;
+    this.settings.startTime = new Date();
     this.settings.trackedFiles = {}; // Clear previous session's tracked files
     this.settings.sessionLog = {}; // Clear previous session's log
     await this.saveSettings();
@@ -369,4 +373,40 @@ function getWordDiff(
   });
 
   return { added, removed };
+}
+
+function getSummaryTimeString(settings: WritingLogPluginSettings) {
+  const now = new Date();
+  const durationObject = getDurationObject(
+    now.getTime() - settings.startTime.getTime()
+  );
+  return `
+Start: ${settings.startTime} 
+End: ${new Date().toLocaleString()}
+Duration: ${getDurationString(durationObject)}
+`;
+}
+
+function getDurationString(durationObject: {
+  hours: number;
+  minutes: number;
+  seconds: number;
+}) {
+  return `Hours: ${durationObject.hours}, Minutes: ${durationObject.minutes}, Seconds: ${durationObject.seconds}`;
+}
+
+function getDurationObject(durationMs: number) {
+  // Convert milliseconds to total seconds
+  const totalSeconds = Math.floor(durationMs / 1000);
+
+  // Calculate hours, minutes, and seconds
+  const seconds = totalSeconds % 60;
+  const minutes = Math.floor(totalSeconds / 60) % 60;
+  const hours = Math.floor(totalSeconds / (60 * 60)); // totalSeconds / 3600
+
+  return {
+    hours: hours,
+    minutes: minutes,
+    seconds: seconds,
+  };
 }
