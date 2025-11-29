@@ -173,7 +173,7 @@ ${summary}`;
     if (!(file instanceof TFile)) {
       return;
     }
-    console.log(`File renamed from ${oldPath} to ${file.path}`);
+    console.debug(`File renamed from ${oldPath} to ${file.path}`);
 
     // Update trackedFiles
     if (this.settings.trackedFiles[oldPath]) {
@@ -198,7 +198,6 @@ ${summary}`;
     if (this.settings.trackedFiles[file.path]) {
       return;
     }
-    console.log('Untracked file opened:', file.path);
     this.settings.trackedFiles[file.path] =
       await this.app.vault.cachedRead(file);
     this.initFileSessionLog(file.path);
@@ -238,7 +237,7 @@ ${summary}`;
 
     this.settings.trackedFiles[file.path] = currentContent; // Update for next comparison
     await this.saveSettings();
-    console.log(
+    console.debug(
       `File: ${file.path}, Added: ${added}, Removed: ${removed}, Net: ${this.settings.sessionLog[file.path].net}`
     );
   }
@@ -263,7 +262,7 @@ ${summary}`;
 
   private initFileSessionLog(filePath: string) {
     if (!this.settings.sessionLog[filePath]) {
-      console.log(`${filePath} not tracked in session log, creating 0 value`);
+      console.debug(`${filePath} not tracked in session log, creating 0 value`);
       this.settings.sessionLog[filePath] = { added: 0, removed: 0, net: 0 };
     }
   }
