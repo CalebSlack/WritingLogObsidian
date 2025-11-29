@@ -381,7 +381,7 @@ function getSummaryTimeString(settings: WritingLogPluginSettings) {
     now.getTime() - settings.startTime.getTime()
   );
   return `
-Start: ${settings.startTime} 
+Start: ${settings.startTime.toLocaleString()} 
 End: ${new Date().toLocaleString()}
 Duration: ${getDurationString(durationObject)}
 `;
