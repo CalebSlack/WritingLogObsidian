@@ -164,7 +164,6 @@ ${summary}`;
     }
     this.settings.isSessionActive = true;
     this.settings.startTime = new Date();
-    this.settings.trackedFiles = {}; // Clear previous session's tracked files
     this.settings.sessionLog = {}; // Clear previous session's log
     await this.saveSettings();
     this.updateStatusBar(statusBarItemEl);
