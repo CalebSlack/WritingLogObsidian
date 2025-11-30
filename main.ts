@@ -164,7 +164,10 @@ ${summary}`;
     }
     this.settings.isSessionActive = true;
     this.settings.startTime = new Date();
-    this.settings.sessionLog = {}; // Clear previous session's log
+    for (const file of this.openFiles) {
+      this.initFileSessionLog(file.path);
+      await this.updateTrackedFiles(file);
+    }
     await this.saveSettings();
     this.updateStatusBar(statusBarItemEl);
     return new Notice('Writing session started!');
@@ -177,7 +180,6 @@ ${summary}`;
     if (!(file instanceof TFile)) {
       return;
     }
-    console.debug(`File renamed from ${oldPath} to ${file.path}`);
 
     // Update trackedFiles
     if (this.settings.trackedFiles[oldPath]) {
@@ -199,17 +201,12 @@ ${summary}`;
 
   private async handleFileOpen(file: TFile) {
     this.openFiles.add(file);
-    if (this.settings.trackedFiles[file.path]) {
-      return;
-    }
-    this.settings.trackedFiles[file.path] =
-      await this.app.vault.cachedRead(file);
+    await this.updateTrackedFiles(file);
     this.initFileSessionLog(file.path);
   }
 
   private async handleActiveLeafChange(leaf: any) {
     const currentFile = leaf?.view?.file;
-
     for (const file of this.openFiles) {
       if (!currentFile || currentFile.path !== file.path) {
         this.openFiles.delete(file);
@@ -241,9 +238,6 @@ ${summary}`;
 
     this.settings.trackedFiles[file.path] = currentContent; // Update for next comparison
     await this.saveSettings();
-    console.debug(
-      `File: ${file.path}, Added: ${added}, Removed: ${removed}, Net: ${this.settings.sessionLog[file.path].net}`
-    );
   }
 
   private async getSummaryFileExistingContent() {
@@ -268,9 +262,13 @@ ${summary}`;
 
   private initFileSessionLog(filePath: string) {
     if (!this.settings.sessionLog[filePath]) {
-      console.debug(`${filePath} not tracked in session log, creating 0 value`);
       this.settings.sessionLog[filePath] = { added: 0, removed: 0, net: 0 };
     }
+  }
+
+  private async updateTrackedFiles(file: TFile) {
+    this.settings.trackedFiles[file.path] =
+      await this.app.vault.cachedRead(file);
   }
 }
 
