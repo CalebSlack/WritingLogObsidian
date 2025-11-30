@@ -71,9 +71,7 @@ export default class WritingLogPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       this.registerEvent(
-        this.app.vault.on('modify', async (file) =>
-          this.updateSessionStatus(file)
-        )
+        this.app.vault.on('modify', async (file) => this.handleModify(file))
       );
 
       this.registerEvent(
@@ -94,6 +92,13 @@ export default class WritingLogPlugin extends Plugin {
         )
       );
     });
+
+    const activeFile = this.app.workspace.getActiveFile();
+    if (activeFile) {
+      // Manually trigger the handler to cache the current content
+      // as the "starting point" for the session
+      await this.handleFileOpen(activeFile);
+    }
   }
 
   onunload() {
@@ -120,6 +125,7 @@ export default class WritingLogPlugin extends Plugin {
     if (!this.settings.isSessionActive) {
       return new Notice("Can't stop a session that hasn't been started...");
     }
+    this.logSession('handleStopCurrentSession');
     this.settings.isSessionActive = false;
     const summary = generateSessionSummary(this.settings);
 
@@ -137,6 +143,7 @@ ${summary}`;
     this.settings.sessionLog = {}; // Clear session log after summary is generated
     await this.saveSettings();
     this.updateStatusBar(statusBarItemEl);
+    this.logSession('handleStopCurrentSession');
     return new Notice(
       `Writing session stopped! Summary written to ${summaryFilePath}.`
     );
@@ -157,17 +164,21 @@ ${summary}`;
   }
 
   private async handleStartSessionCommand(statusBarItemEl: HTMLElement) {
+    console.log('Attempting to start session');
     if (this.settings.isSessionActive) {
+      console.log('Session already started');
       return new Notice(
         'Writing session already active, stop this one before starting another'
       );
     }
+    this.logSession('handleStartSessionCommand');
     this.settings.isSessionActive = true;
     this.settings.startTime = new Date();
     for (const file of this.openFiles) {
       this.initFileSessionLog(file.path);
       await this.updateTrackedFiles(file);
     }
+    this.logSession('handleStartSessionCommand');
     await this.saveSettings();
     this.updateStatusBar(statusBarItemEl);
     return new Notice('Writing session started!');
@@ -180,6 +191,7 @@ ${summary}`;
     if (!(file instanceof TFile)) {
       return;
     }
+    this.logSession('handleRename');
 
     // Update trackedFiles
     if (this.settings.trackedFiles[oldPath]) {
@@ -196,16 +208,20 @@ ${summary}`;
       // If the file was renamed before any modification during the session, initialize its log
       this.initFileSessionLog(file.path);
     }
+    this.logSession('handleRename');
     await this.saveSettings();
   }
 
   private async handleFileOpen(file: TFile) {
+    this.logSession('handleFileOpen');
     this.openFiles.add(file);
     await this.updateTrackedFiles(file);
     this.initFileSessionLog(file.path);
+    this.logSession('handleFileOpen');
   }
 
   private async handleActiveLeafChange(leaf: any) {
+    this.logSession('handleActiveLeafChange');
     const currentFile = leaf?.view?.file;
     for (const file of this.openFiles) {
       if (!currentFile || currentFile.path !== file.path) {
@@ -213,15 +229,17 @@ ${summary}`;
         this.settings.trackedFiles[file.path] = ''; // Reset to empty to save space
       }
     }
+    this.logSession('handleActiveLeafChange');
   }
 
-  private async updateSessionStatus(file: TAbstractFile) {
+  private async handleModify(file: TAbstractFile) {
     if (!this.settings.isSessionActive) {
       return;
     }
     if (!(file instanceof TFile)) {
       return;
     }
+    this.logSession('handleModify');
 
     const currentContent = await this.app.vault.cachedRead(file);
     const oldContent = this.settings.trackedFiles[file.path] || '';
@@ -238,6 +256,7 @@ ${summary}`;
 
     this.settings.trackedFiles[file.path] = currentContent; // Update for next comparison
     await this.saveSettings();
+    this.logSession('handleModify');
   }
 
   private async getSummaryFileExistingContent() {
@@ -269,6 +288,20 @@ ${summary}`;
   private async updateTrackedFiles(file: TFile) {
     this.settings.trackedFiles[file.path] =
       await this.app.vault.cachedRead(file);
+  }
+
+  private logSession(prefix: string) {
+    Object.keys(this.settings.trackedFiles).forEach((key) => {
+      console.log(`${prefix} | Tracked File: ${key}`);
+    });
+    Object.entries(this.settings.sessionLog).forEach((entry) => {
+      console.log(
+        `${prefix} | Session Log: ${entry[0]} = ${JSON.stringify(entry[1])}`
+      );
+    });
+    for (const file of this.openFiles) {
+      console.log(`${prefix} | Open File: ${file.path}`);
+    }
   }
 }
 
